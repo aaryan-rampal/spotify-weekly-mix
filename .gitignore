@@ -1,0 +1,6 @@
+.DS_Store
+.cache
+.env
+weekly_mix.log
+saved_songs.csv
+monthly-mixes/
