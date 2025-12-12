@@ -153,13 +153,16 @@ def pick_random_track_from_artist(artist_id):
 max_tracks = 16
 max_runtime = 60
 max_artist = 2
+failed_runtime_attempts = 5
 
 max_runtime_ms = max_runtime * 60 * 1000
 total_runtime = 0
+runtime_limit_hits = 0
 new_playlist_ids = []
 artist_counts = defaultdict(int)
 attempts = 0
 max_attempts = 200  # Prevent infinite loops
+ended_early_reason = ""
 
 print(
     f"Creating weekly mix with max {max_tracks} tracks, {max_runtime} minutes runtime, max {max_artist} tracks per artist"
@@ -204,7 +207,14 @@ while (
 
     # Check if adding this track would exceed runtime
     if total_runtime + rand_track_ms > max_runtime_ms:
+        runtime_limit_hits += 1
         print(f"{track_name} by {artist_name} would make playlist too long")
+        if runtime_limit_hits >= failed_runtime_attempts:
+            ended_early_reason = (
+                "Ended early because too many tracks hit runtime limit, likely near max time."
+            )
+            print(ended_early_reason)
+            break
         continue
 
     print(f"✓ {track_name} by {artist_name} made it to the playlist!")
@@ -215,6 +225,9 @@ while (
 print(f"\nPlaylist created with {len(new_playlist_ids)} tracks")
 print(f"Total runtime: {total_runtime / 1000 / 60:.1f} minutes")
 print(f"Attempts made: {attempts}")
+print(f"Runtime limit hits: {runtime_limit_hits}")
+if ended_early_reason:
+    print(ended_early_reason)
 
 # %%
 if new_playlist_ids:
