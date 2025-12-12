@@ -240,6 +240,8 @@ else:
 # Display final artist distribution
 print("\nArtist distribution in the playlist:")
 for artist, count in artist_counts.items():
+    if count == 0:
+        continue
     print(f"{artist}: {count} track(s)")
 
 # %%
