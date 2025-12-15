@@ -1,6 +1,5 @@
 #!/bin/zsh
-source /opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh
-conda activate spotify
+source /Users/aaryanrampal/env/spotify/bin/activate
 cd /Users/aaryanrampal/personal/programs/spotify
 
 # Kill any existing processes using port 5173 (from previous failed runs)
