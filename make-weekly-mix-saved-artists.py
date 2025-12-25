@@ -7,6 +7,7 @@ import random
 import datetime
 from collections import defaultdict
 from functools import lru_cache
+from loguru import logger
 
 # %%
 
@@ -40,6 +41,17 @@ def find_artist_ids(track, return_artists=False):
 
 
 # %%
+logger.remove()
+logger.add(
+    "weekly_mix.log",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
+    level="DEBUG",
+)
+logger.add(
+    lambda msg: print(msg, end=""),
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
+    level="INFO",
+)
 
 load_dotenv()
 client_id = os.getenv("SPOTIPY_CLIENT_ID")
@@ -61,21 +73,21 @@ sp = spotipy.Spotify(
 
 # %%
 # Get all saved/followed artists
-print("Fetching saved artists...")
+logger.info("Fetching saved artists...")
 saved_artists = []
 results = sp.current_user_followed_artists(limit=50)
 
 while results:
     for artist in results["artists"]["items"]:
         saved_artists.append(artist)
-        print(f"Found artist: {artist['name']}")
+        logger.debug(f"Found artist: {artist['name']}")
 
     if results["artists"]["next"]:
         results = sp.next(results["artists"])
     else:
         break
 
-print(f"Total saved artists found: {len(saved_artists)}")
+logger.info(f"Total saved artists found: {len(saved_artists)}")
 
 
 # %%
@@ -94,7 +106,7 @@ def get_artist_albums(artist_id, limit=50):
                     all_albums.append(album)
                 else:
                     # If we find an album that doesn't belong to this artist, stop here
-                    print(
+                    logger.debug(
                         f"Found album not belonging to artist {artist_id}, stopping pagination"
                     )
                     return tuple(all_albums)
@@ -106,7 +118,7 @@ def get_artist_albums(artist_id, limit=50):
 
         return tuple(all_albums)  # Return tuple for hashability
     except Exception as e:
-        print(f"Error fetching albums for artist {artist_id}: {e}")
+        logger.error(f"Error fetching albums for artist {artist_id}: {e}")
         return tuple()
 
 
@@ -118,7 +130,7 @@ def get_album_tracks(album_id):
         tracks = sp.album_tracks(album_id)
         return tuple(tracks["items"])  # Return tuple for hashability
     except Exception as e:
-        print(f"Error fetching tracks for album {album_id}: {e}")
+        logger.error(f"Error fetching tracks for album {album_id}: {e}")
         return tuple()
 
 
@@ -164,7 +176,7 @@ attempts = 0
 max_attempts = 200  # Prevent infinite loops
 ended_early_reason = ""
 
-print(
+logger.info(
     f"Creating weekly mix with max {max_tracks} tracks, {max_runtime} minutes runtime, max {max_artist} tracks per artist"
 )
 
@@ -184,7 +196,7 @@ while (
     rand_track = pick_random_track_from_artist(artist_id)
 
     if not rand_track:
-        print(f"No tracks found for {artist_name}")
+        logger.warning(f"No tracks found for {artist_name}")
         continue
 
     rand_track_id = rand_track["id"]
@@ -194,40 +206,40 @@ while (
     # Check if track is already saved
     try:
         if sp.current_user_saved_tracks_contains([rand_track_id])[0]:
-            print(f"{track_name} by {artist_name} is already saved")
+            logger.debug(f"{track_name} by {artist_name} is already saved")
             continue
     except Exception as e:
-        print(f"Error checking if track is saved: {e}")
+        logger.error(f"Error checking if track is saved: {e}")
         continue
 
     # Check artist count limit
     if artist_counts[artist_name] >= max_artist:
-        print(f"{track_name} by {artist_name} - too many tracks by this artist already")
+        logger.debug(f"{track_name} by {artist_name} - too many tracks by this artist already")
         continue
 
     # Check if adding this track would exceed runtime
     if total_runtime + rand_track_ms > max_runtime_ms:
         runtime_limit_hits += 1
-        print(f"{track_name} by {artist_name} would make playlist too long")
+        logger.debug(f"{track_name} by {artist_name} would make playlist too long")
         if runtime_limit_hits >= failed_runtime_attempts:
             ended_early_reason = (
                 "Ended early because too many tracks hit runtime limit, likely near max time."
             )
-            print(ended_early_reason)
+            logger.info(ended_early_reason)
             break
         continue
 
-    print(f"✓ {track_name} by {artist_name} made it to the playlist!")
+    logger.info(f"✓ {track_name} by {artist_name} made it to the playlist!")
     new_playlist_ids.append(rand_track_id)
     total_runtime += rand_track_ms
     artist_counts[artist_name] += 1
 
-print(f"\nPlaylist created with {len(new_playlist_ids)} tracks")
-print(f"Total runtime: {total_runtime / 1000 / 60:.1f} minutes")
-print(f"Attempts made: {attempts}")
-print(f"Runtime limit hits: {runtime_limit_hits}")
+logger.info(f"\nPlaylist created with {len(new_playlist_ids)} tracks")
+logger.info(f"Total runtime: {total_runtime / 1000 / 60:.1f} minutes")
+logger.info(f"Attempts made: {attempts}")
+logger.info(f"Runtime limit hits: {runtime_limit_hits}")
 if ended_early_reason:
-    print(ended_early_reason)
+    logger.info(ended_early_reason)
 
 # %%
 if new_playlist_ids:
@@ -235,7 +247,7 @@ if new_playlist_ids:
     current_week = datetime.datetime.now().isocalendar()[1]
     playlist_name = f"Weekly Mix {current_week}"
 
-    print(f"Creating playlist: {playlist_name}")
+    logger.info(f"Creating playlist: {playlist_name}")
     new_playlist = sp.user_playlist_create(
         user_id,
         playlist_name,
@@ -244,17 +256,17 @@ if new_playlist_ids:
     )
     sp.playlist_add_items(new_playlist["id"], new_playlist_ids)
 
-    print(f"Playlist '{playlist_name}' created successfully!")
-    print(f"Playlist URL: {new_playlist['external_urls']['spotify']}")
+    logger.info(f"Playlist '{playlist_name}' created successfully!")
+    logger.info(f"Playlist URL: {new_playlist['external_urls']['spotify']}")
 else:
-    print("No tracks were added to the playlist.")
+    logger.warning("No tracks were added to the playlist.")
 
 # %%
 # Display final artist distribution
-print("\nArtist distribution in the playlist:")
+logger.info("\nArtist distribution in the playlist:")
 for artist, count in artist_counts.items():
     if count == 0:
         continue
-    print(f"{artist}: {count} track(s)")
+    logger.info(f"{artist}: {count} track(s)")
 
 # %%
