@@ -89,6 +89,30 @@ while results:
 
 logger.info(f"Total saved artists found: {len(saved_artists)}")
 
+# %%
+# Get all saved tracks to check for duplicates by name+artist
+logger.info("Fetching saved tracks to avoid duplicates...")
+saved_tracks_set = set()
+results = sp.current_user_saved_tracks(limit=50)
+
+while results:
+    for item in results["items"]:
+        track = item["track"]
+        # Create a normalized key: lowercase track name + primary artist name
+        track_key = (
+            track["name"].lower().strip(),
+            track["artists"][0]["name"].lower().strip() if track["artists"] else ""
+        )
+        saved_tracks_set.add(track_key)
+        logger.debug(f"Saved track: {track['name']} by {track['artists'][0]['name'] if track['artists'] else 'Unknown'}")
+
+    if results["next"]:
+        results = sp.next(results)
+    else:
+        break
+
+logger.info(f"Total saved tracks found: {len(saved_tracks_set)}")
+
 
 # %%
 @lru_cache(maxsize=128)
@@ -203,13 +227,10 @@ while (
     rand_track_ms = rand_track["duration_ms"]
     track_name = rand_track["name"]
 
-    # Check if track is already saved
-    try:
-        if sp.current_user_saved_tracks_contains([rand_track_id])[0]:
-            logger.debug(f"{track_name} by {artist_name} is already saved")
-            continue
-    except Exception as e:
-        logger.error(f"Error checking if track is saved: {e}")
+    # Check if track (or a version of it) is already saved
+    track_key = (track_name.lower().strip(), artist_name.lower().strip())
+    if track_key in saved_tracks_set:
+        logger.debug(f"{track_name} by {artist_name} is already saved (or a version of it)")
         continue
 
     # Check artist count limit
