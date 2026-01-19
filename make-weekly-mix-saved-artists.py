@@ -285,9 +285,20 @@ else:
 # %%
 # Display final artist distribution
 logger.info("\nArtist distribution in the playlist:")
+
+# Group artists by track count
+tracks_to_artists = defaultdict(list)
 for artist, count in artist_counts.items():
-    if count == 0:
-        continue
-    logger.info(f"{artist}: {count} track(s)")
+    if count > 0:
+        tracks_to_artists[count].append(artist)
+
+# Display grouped by count, only showing groups that exist and are <= max_artist
+for track_count in sorted(tracks_to_artists.keys()):
+    if track_count <= max_artist:
+        artists = sorted(tracks_to_artists[track_count])
+        plural = "track" if track_count == 1 else "tracks"
+        logger.info(f"Artists with {track_count} {plural}:")
+        for artist in artists:
+            logger.info(f"  - {artist}")
 
 # %%
