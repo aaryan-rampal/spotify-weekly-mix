@@ -186,8 +186,8 @@ def pick_random_track_from_artist(artist_id):
 
 # %%
 # CHANGE THESE TO YOUR PREFERENCE
-max_tracks = 16
-max_runtime = 60
+max_tracks = 20
+max_runtime = 75
 max_artist = 2
 failed_runtime_attempts = 5
 
