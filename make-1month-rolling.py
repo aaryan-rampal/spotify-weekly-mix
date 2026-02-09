@@ -36,7 +36,7 @@ sp = spotipy.Spotify(
 )
 
 # %%
-playlist_name = "1 Month Rolling"
+playlist_name = "last month"
 cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)
 
 logger.info(f"Fetching saved tracks added after {cutoff_date.strftime('%Y-%m-%d')}...")
@@ -105,7 +105,11 @@ if existing_playlist:
 
     if all_track_ids:
         logger.info(f"Clearing {len(all_track_ids)} tracks from existing playlist...")
-        sp.playlist_remove_all_occurrences_of_items(playlist_id, all_track_ids)
+        # Remove in batches of 100 (Spotify API limit)
+        batch_size = 100
+        for i in range(0, len(all_track_ids), batch_size):
+            batch = all_track_ids[i : i + batch_size]
+            sp.playlist_remove_all_occurrences_of_items(playlist_id, batch)
 
     # Add filtered tracks
     track_ids_to_add = [t["id"] for t in filtered_tracks]
