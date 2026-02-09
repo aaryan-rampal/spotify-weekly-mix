@@ -18,7 +18,65 @@ def discover_track(
 
 def fetch_recent_liked_tracks(sp, logger, months_window=3):
     """Fetches recent liked songs using pagination with time window filtering."""
-    return []
+    import time
+    from datetime import datetime, timezone, timedelta
+
+    tracks = []
+    cutoff_date = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(
+        days=months_window * 30
+    )
+
+    def fetch_with_retry(sp, api_call, max_retries=5, initial_delay=1, max_delay=30):
+        retry_delay = initial_delay
+        for attempt in range(max_retries):
+            try:
+                return api_call()
+            except Exception as e:
+                http_status = getattr(e, "http_status", None) or getattr(
+                    e, "status", None
+                )
+
+                if http_status == 429:
+                    if attempt < max_retries - 1:
+                        logger.warning(
+                            f"Rate limited, retrying in {retry_delay}s (attempt {attempt + 1}/{max_retries})"
+                        )
+                        time.sleep(retry_delay)
+                        retry_delay = min(retry_delay * 2, max_delay)
+                    else:
+                        logger.error(f"Max retries exceeded for rate limit")
+                        raise
+                else:
+                    logger.error(f"Error fetching tracks: {e}")
+                    raise
+        return None
+
+    try:
+        results = fetch_with_retry(sp, lambda: sp.current_user_saved_tracks(limit=50))
+
+        while results and results["items"]:
+            for item in results["items"]:
+                added_at = datetime.fromisoformat(
+                    item["added_at"].replace("Z", "+00:00")
+                )
+                if added_at >= cutoff_date:
+                    tracks.append(item["track"])
+                elif tracks and added_at < cutoff_date:
+                    pass
+
+            results = fetch_with_retry(sp, lambda: sp.next(results))
+
+    except Exception as e:
+        logger.error(f"Error fetching tracks: {e}")
+        return []
+
+    if len(tracks) < 10:
+        logger.warning(
+            f"Only found {len(tracks)} tracks in last {months_window} months, may generate generic playlist"
+        )
+
+    logger.info(f"Fetched {len(tracks)} recent tracks from last {months_window} months")
+    return tracks
 
 
 def analyze_genres(tracks, logger):
