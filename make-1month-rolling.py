@@ -37,59 +37,7 @@ sp = spotipy.Spotify(
 )
 
 # %%
-playlist_name = "last month"
-cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)
-
-logger.info(f"Fetching saved tracks added after {cutoff_date.strftime('%Y-%m-%d')}...")
-
-# Fetch all saved tracks and filter by added_at date
-filtered_tracks = []
-results = sp.current_user_saved_tracks(limit=50)
-
-while results:
-    for item in results["items"]:
-        track = item["track"]
-        added_at = datetime.datetime.fromisoformat(
-            item["added_at"].replace("Z", "+00:00")
-        )
-
-        if added_at >= cutoff_date:
-            filtered_tracks.append(
-                {
-                    "id": track["id"],
-                    "name": track["name"],
-                    "artists": [a["name"] for a in track["artists"]],
-                    "added_at": added_at,
-                }
-            )
-            logger.debug(
-                f"Track within window: {track['name']} by {track['artists'][0]['name']} (added {added_at.strftime('%Y-%m-%d')})"
-            )
-
-    if results["next"]:
-        results = sp.next(results)
-    else:
-        break
-
-logger.info(f"Found {len(filtered_tracks)} tracks in the last 30 days")
-
-# Find existing playlist or create new one
-user_id = sp.current_user()["id"]
-user_playlists = sp.user_playlists(user_id)
-
-existing_playlist = None
-while user_playlists:
-    for playlist in user_playlists["items"]:
-        if playlist["name"] == playlist_name:
-            existing_playlist = playlist
-            logger.info(f"Found existing playlist: {playlist_name}")
-            break
-    if user_playlists["next"]:
-        user_playlists = sp.next(user_playlists)
-    else:
-        break
-
-def pin_playlist(playlist_id):
+def pin_playlist(playlist_id, playlist_name):
     try:
         sp.current_user_follow_playlist(playlist_id)
         logger.info(f"Pinned playlist: {playlist_name}")
@@ -100,7 +48,7 @@ class BatchAction(Enum):
     ADD = "add"
     REMOVE = "remove"
 
-def batch_operation(items, action=BatchAction.ADD, batch_size=100):
+def batch_operation(items, action=BatchAction.ADD, playlist_id, batch_size=100):
     if items:
         # Do action in batches of 100 (Spotify API limit)
         for i in range(0, len(items), batch_size):
@@ -112,43 +60,100 @@ def batch_operation(items, action=BatchAction.ADD, batch_size=100):
             logger.info(f"{action.value.capitalize()}ed batch {i // batch_size + 1}: {len(batch)} tracks")
         logger.info(f"{action.value.capitalize()}ed {len(items)} total tracks to playlist")
 
-if existing_playlist:
-    # Clear existing playlist
-    playlist_id = existing_playlist["id"]
-    track_ids = sp.playlist_items(playlist_id, limit=50)
-    all_track_ids = []
+def make_rolling_playlist(playlist_name, days=30, pin=False):
+    cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
 
-    while track_ids:
-        for item in track_ids["items"]:
-            if item["track"]:
-                all_track_ids.append(item["track"]["id"])
-        if track_ids["next"]:
-            track_ids = sp.next(track_ids)
+    logger.info(f"Fetching saved tracks added after {cutoff_date.strftime('%Y-%m-%d')}...")
+
+    # Fetch all saved tracks and filter by added_at date
+    filtered_tracks = []
+    results = sp.current_user_saved_tracks(limit=50)
+
+    while results:
+        for item in results["items"]:
+            track = item["track"]
+            added_at = datetime.datetime.fromisoformat(
+                item["added_at"].replace("Z", "+00:00")
+            )
+
+            if added_at >= cutoff_date:
+                filtered_tracks.append(
+                    {
+                        "id": track["id"],
+                        "name": track["name"],
+                        "artists": [a["name"] for a in track["artists"]],
+                        "added_at": added_at,
+                    }
+                )
+                logger.debug(
+                    f"Track within window: {track['name']} by {track['artists'][0]['name']} (added {added_at.strftime('%Y-%m-%d')})"
+                )
+
+        if results["next"]:
+            results = sp.next(results)
         else:
             break
 
-    track_ids_set = set(all_track_ids)
+    logger.info(f"Found {len(filtered_tracks)} tracks in the last {days} days")
 
-    # Add filtered tracks
-    last_30_days_ids = set([t["id"] for t in filtered_tracks])
-    track_ids_to_add = list(last_30_days_ids - track_ids_set)
-    track_ids_to_remove = list(track_ids_set - last_30_days_ids)
+    # Find existing playlist or create new one
+    user_id = sp.current_user()["id"]
+    user_playlists = sp.user_playlists(user_id)
 
-    batch_operation(track_ids_to_add, action=BatchAction.ADD)
-    batch_operation(track_ids_to_remove, action=BatchAction.REMOVE)
-else:
-    # Create new playlist
-    playlist_id = sp.user_playlist_create(
-        user_id,
-        playlist_name,
-        public=False,
-        description=f"Tracks liked in the last 30 days (last updated: {datetime.datetime.now().strftime('%Y-%m-%d')})",
-    )["id"]
+    existing_playlist = None
+    while user_playlists:
+        for playlist in user_playlists["items"]:
+            if playlist["name"] == playlist_name:
+                existing_playlist = playlist
+                logger.info(f"Found existing playlist: {playlist_name}")
+                break
+        if user_playlists["next"]:
+            user_playlists = sp.next(user_playlists)
+        else:
+            break
 
-    track_ids_to_add = [t["id"] for t in filtered_tracks]
-    batch_operation(track_ids_to_add, action=BatchAction.ADD)
+    if existing_playlist:
+        # Clear existing playlist
+        playlist_id = existing_playlist["id"]
+        track_ids = sp.playlist_items(playlist_id, limit=50)
+        all_track_ids = []
 
-logger.info(f"1 Month Rolling playlist updated successfully!")
-pin_playlist(playlist_id)
-logger.info(f"Playlist pinned successfully!")
-logger.info(f"Playlist URL: https://open.spotify.com/playlist/{playlist_id}")
+        while track_ids:
+            for item in track_ids["items"]:
+                if item["track"]:
+                    all_track_ids.append(item["track"]["id"])
+            if track_ids["next"]:
+                track_ids = sp.next(track_ids)
+            else:
+                break
+
+        track_ids_set = set(all_track_ids)
+
+        # Add filtered tracks
+        last_n_days_ids = set([t["id"] for t in filtered_tracks])
+        track_ids_to_add = list(last_n_days_ids - track_ids_set)
+        track_ids_to_remove = list(track_ids_set - last_n_days_ids)
+
+        batch_operation(track_ids_to_add, action=BatchAction.ADD, playlist_id=playlist_id)
+        batch_operation(track_ids_to_remove, action=BatchAction.REMOVE, playlist_id=playlist_id)
+    else:
+        # Create new playlist
+        playlist_id = sp.user_playlist_create(
+            user_id,
+            playlist_name,
+            public=False,
+            description=f"Tracks liked in the last {days} days (last updated: {datetime.datetime.now().strftime('%Y-%m-%d')})",
+        )["id"]
+
+        track_ids_to_add = [t["id"] for t in filtered_tracks]
+        batch_operation(track_ids_to_add, action=BatchAction.ADD, playlist_id=playlist_id)
+
+    logger.info(f"{days} Days Rolling playlist updated successfully!")
+    if pin:
+        pin_playlist(playlist_id, playlist_name)
+        logger.info(f"Playlist pinned successfully!")
+    logger.info(f"Playlist URL: https://open.spotify.com/playlist/{playlist_id}")
+
+# %%
+make_rolling_playlist("last month", days=30, pin=True)
+make_rolling_playlist("last 3 months", days=90, pin=True)
