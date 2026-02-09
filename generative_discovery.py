@@ -19,12 +19,15 @@ def discover_track(
 def fetch_recent_liked_tracks(sp, logger, months_window=3):
     """Fetches recent liked songs using pagination with time window filtering."""
     import time
-    from datetime import datetime, timezone, timedelta
+    import datetime
+
+    from datetime import timezone, timedelta
 
     tracks = []
-    cutoff_date = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(
-        days=months_window * 30
-    )
+    cutoff_time = datetime.datetime.now(timezone.utc).replace(
+        microsecond=0
+    ) - timedelta(days=months_window * 30)
+    after_timestamp = cutoff_time.isoformat() + "Z"
 
     def fetch_with_retry(sp, api_call, max_retries=5, initial_delay=1, max_delay=30):
         retry_delay = initial_delay
@@ -52,17 +55,13 @@ def fetch_recent_liked_tracks(sp, logger, months_window=3):
         return None
 
     try:
-        results = fetch_with_retry(sp, lambda: sp.current_user_saved_tracks(limit=50))
+        results = fetch_with_retry(
+            sp, lambda: sp.current_user_saved_tracks(limit=50, after=after_timestamp)
+        )
 
         while results and results["items"]:
             for item in results["items"]:
-                added_at = datetime.fromisoformat(
-                    item["added_at"].replace("Z", "+00:00")
-                )
-                if added_at >= cutoff_date:
-                    tracks.append(item["track"])
-                elif tracks and added_at < cutoff_date:
-                    pass
+                tracks.append(item["track"])
 
             results = fetch_with_retry(sp, lambda: sp.next(results))
 
