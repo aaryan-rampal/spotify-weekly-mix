@@ -78,9 +78,63 @@ def fetch_recent_liked_tracks(sp, logger, months_window=3):
     return tracks
 
 
-def analyze_genres(tracks, logger):
+def analyze_genres(sp, tracks, logger):
     """Extracts and ranks genres from recent liked tracks."""
-    return []
+    from collections import Counter
+
+    if not tracks:
+        logger.warning("No tracks provided for genre analysis")
+        return []
+
+    try:
+        artist_ids = list(
+            set(
+                artist["id"]
+                for track in tracks
+                for artist in track.get("artists", [])
+                if artist.get("id")
+            )
+        )
+
+        if not artist_ids:
+            logger.warning("No artists found in tracks")
+            return []
+
+        logger.info(f"Found {len(artist_ids)} unique artists for genre analysis")
+
+        genre_counter = Counter()
+
+        for i in range(0, len(artist_ids), 50):
+            batch_ids = artist_ids[i : i + 50]
+            try:
+                artists_data = sp.artists(batch_ids)
+                if artists_data and "artists" in artists_data:
+                    for artist in artists_data["artists"]:
+                        if artist and artist.get("genres"):
+                            for genre in artist["genres"]:
+                                genre_counter[genre] += 1
+            except Exception as e:
+                logger.error(f"Error fetching artist data: {e}")
+                continue
+
+        if not genre_counter:
+            logger.warning("No genres found for artists")
+            return []
+
+        logger.info(
+            f"Analyzed {len(artist_ids)} artists, found {len(genre_counter)} unique genres"
+        )
+
+        top_genres = [
+            {"genre": genre, "count": count}
+            for genre, count in genre_counter.most_common(5)
+        ]
+
+        return top_genres
+
+    except Exception as e:
+        logger.error(f"Error in genre analysis: {e}")
+        return []
 
 
 def analyze_artists(tracks, logger):
