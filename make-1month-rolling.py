@@ -48,7 +48,7 @@ class BatchAction(Enum):
     ADD = "add"
     REMOVE = "remove"
 
-def batch_operation(items, action=BatchAction.ADD, playlist_id, batch_size=100):
+def batch_operation(items, action, playlist_id, batch_size=100):
     if items:
         # Do action in batches of 100 (Spotify API limit)
         for i in range(0, len(items), batch_size):
