@@ -110,8 +110,13 @@ if existing_playlist:
     # Add filtered tracks
     track_ids_to_add = [t["id"] for t in filtered_tracks]
     if track_ids_to_add:
-        sp.playlist_add_items(playlist_id, track_ids_to_add)
-        logger.info(f"Added {len(track_ids_to_add)} tracks to playlist")
+        # Add in batches of 100 (Spotify API limit)
+        batch_size = 100
+        for i in range(0, len(track_ids_to_add), batch_size):
+            batch = track_ids_to_add[i : i + batch_size]
+            sp.playlist_add_items(playlist_id, batch)
+            logger.info(f"Added batch {i // batch_size + 1}: {len(batch)} tracks")
+        logger.info(f"Added {len(track_ids_to_add)} total tracks to playlist")
 else:
     # Create new playlist
     playlist_id = sp.user_playlist_create(
@@ -123,7 +128,12 @@ else:
 
     track_ids_to_add = [t["id"] for t in filtered_tracks]
     if track_ids_to_add:
-        sp.playlist_add_items(playlist_id, track_ids_to_add)
+        # Add in batches of 100 (Spotify API limit)
+        batch_size = 100
+        for i in range(0, len(track_ids_to_add), batch_size):
+            batch = track_ids_to_add[i : i + batch_size]
+            sp.playlist_add_items(playlist_id, batch)
+            logger.info(f"Added batch {i // batch_size + 1}: {len(batch)} tracks")
         logger.info(f"Created new playlist with {len(track_ids_to_add)} tracks")
 
 logger.info(f"1 Month Rolling playlist updated successfully!")
