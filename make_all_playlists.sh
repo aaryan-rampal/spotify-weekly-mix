@@ -32,23 +32,13 @@ else
 fi
 echo ""
 
-echo "Running 1-month rolling window..."
-python make-1month-rolling.py
-ROLLING_1_EXIT_CODE=$?
-if [ $ROLLING_1_EXIT_CODE -eq 0 ]; then
+echo "Running 1-month and 3 month rolling window..."
+python make-rolling.py
+ROLLING_EXIT_CODE=$?
+if [ $ROLLING_EXIT_CODE -eq 0 ]; then
     echo "✓ 1-month rolling completed successfully"
 else
-    echo "✗ 1-month rolling failed with exit code $ROLLING_1_EXIT_CODE"
-fi
-echo ""
-
-echo "Running 3-month rolling window..."
-python make-3month-rolling.py
-ROLLING_3_EXIT_CODE=$?
-if [ $ROLLING_3_EXIT_CODE -eq 0 ]; then
-    echo "✓ 3-month rolling completed successfully"
-else
-    echo "✗ 3-month rolling failed with exit code $ROLLING_3_EXIT_CODE"
+    echo "✗ 1-month rolling failed with exit code $ROLLING_EXIT_CODE"
 fi
 echo ""
 

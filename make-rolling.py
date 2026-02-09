@@ -60,6 +60,7 @@ def batch_operation(items, action, playlist_id, batch_size=100):
             logger.info(f"{action.value.capitalize()}ed batch {i // batch_size + 1}: {len(batch)} tracks")
         logger.info(f"{action.value.capitalize()}ed {len(items)} total tracks to playlist")
 
+
 def make_rolling_playlist(playlist_name, days=30, pin=False):
     cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
 
