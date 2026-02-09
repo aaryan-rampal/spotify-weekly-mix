@@ -4,6 +4,8 @@
 weekly_mix.log
 saved_songs.csv
 monthly-mixes/
+*.log
 
 # my mac automation file
 *.plist
+
