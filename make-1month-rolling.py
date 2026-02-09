@@ -89,6 +89,13 @@ while user_playlists:
     else:
         break
 
+def pin_playlist(playlist_id):
+    try:
+        sp.current_user_follow_playlist(playlist_id)
+        logger.info(f"Pinned playlist: {playlist_name}")
+    except Exception as e:
+        logger.error(f"Failed to pin playlist: {e}")
+
 class BatchAction(Enum):
     ADD = "add"
     REMOVE = "remove"
@@ -142,3 +149,6 @@ else:
     batch_operation(track_ids_to_add, action=BatchAction.ADD)
 
 logger.info(f"1 Month Rolling playlist updated successfully!")
+pin_playlist(playlist_id)
+logger.info(f"Playlist pinned successfully!")
+logger.info(f"Playlist URL: https://open.spotify.com/playlist/{playlist_id}")
