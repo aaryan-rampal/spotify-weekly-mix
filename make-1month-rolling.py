@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 import datetime
 from loguru import logger
+from enum import Enum
 
 # %%
 logger.remove()
@@ -88,6 +89,22 @@ while user_playlists:
     else:
         break
 
+class BatchAction(Enum):
+    ADD = "add"
+    REMOVE = "remove"
+
+def batch_operation(items, action=BatchAction.ADD, batch_size=100):
+    if items:
+        # Do action in batches of 100 (Spotify API limit)
+        for i in range(0, len(items), batch_size):
+            batch = items[i : i + batch_size]
+            if action == BatchAction.ADD:
+                sp.playlist_add_items(playlist_id, batch)
+            else:
+                sp.playlist_remove_all_occurrences_of_items(playlist_id, batch)
+            logger.info(f"{action.value.capitalize()}ed batch {i // batch_size + 1}: {len(batch)} tracks")
+        logger.info(f"{action.value.capitalize()}ed {len(items)} total tracks to playlist")
+
 if existing_playlist:
     # Clear existing playlist
     playlist_id = existing_playlist["id"]
@@ -103,24 +120,15 @@ if existing_playlist:
         else:
             break
 
-    if all_track_ids:
-        logger.info(f"Clearing {len(all_track_ids)} tracks from existing playlist...")
-        # Remove in batches of 100 (Spotify API limit)
-        batch_size = 100
-        for i in range(0, len(all_track_ids), batch_size):
-            batch = all_track_ids[i : i + batch_size]
-            sp.playlist_remove_all_occurrences_of_items(playlist_id, batch)
+    track_ids_set = set(all_track_ids)
 
     # Add filtered tracks
-    track_ids_to_add = [t["id"] for t in filtered_tracks]
-    if track_ids_to_add:
-        # Add in batches of 100 (Spotify API limit)
-        batch_size = 100
-        for i in range(0, len(track_ids_to_add), batch_size):
-            batch = track_ids_to_add[i : i + batch_size]
-            sp.playlist_add_items(playlist_id, batch)
-            logger.info(f"Added batch {i // batch_size + 1}: {len(batch)} tracks")
-        logger.info(f"Added {len(track_ids_to_add)} total tracks to playlist")
+    last_30_days_ids = set([t["id"] for t in filtered_tracks])
+    track_ids_to_add = list(last_30_days_ids - track_ids_set)
+    track_ids_to_remove = list(track_ids_set - last_30_days_ids)
+
+    batch_operation(track_ids_to_add, action=BatchAction.ADD)
+    batch_operation(track_ids_to_remove, action=BatchAction.REMOVE)
 else:
     # Create new playlist
     playlist_id = sp.user_playlist_create(
@@ -131,13 +139,6 @@ else:
     )["id"]
 
     track_ids_to_add = [t["id"] for t in filtered_tracks]
-    if track_ids_to_add:
-        # Add in batches of 100 (Spotify API limit)
-        batch_size = 100
-        for i in range(0, len(track_ids_to_add), batch_size):
-            batch = track_ids_to_add[i : i + batch_size]
-            sp.playlist_add_items(playlist_id, batch)
-            logger.info(f"Added batch {i // batch_size + 1}: {len(batch)} tracks")
-        logger.info(f"Created new playlist with {len(track_ids_to_add)} tracks")
+    batch_operation(track_ids_to_add, action=BatchAction.ADD)
 
 logger.info(f"1 Month Rolling playlist updated successfully!")
