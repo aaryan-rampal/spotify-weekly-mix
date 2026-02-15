@@ -7,6 +7,8 @@ import random
 import datetime
 from collections import defaultdict
 from functools import lru_cache
+from pathlib import Path
+import yaml
 from loguru import logger
 
 # %%
@@ -54,6 +56,11 @@ logger.add(
 )
 
 load_dotenv()
+
+config_path = Path(__file__).parent.parent / "config.yaml"
+with open(config_path) as f:
+    config = yaml.safe_load(f)
+
 client_id = os.getenv("SPOTIPY_CLIENT_ID")
 client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
 redirect_uri = os.getenv("SPOTIPY_REDIRECT_URI")
@@ -187,11 +194,78 @@ def pick_random_track_from_artist(artist_id):
 
 
 # %%
-# CHANGE THESE TO YOUR PREFERENCE
-max_tracks = 20
-max_runtime = 75
-max_artist = 2
-failed_runtime_attempts = 5
+def get_generative_track(sp, saved_artists, saved_tracks_set, logger):
+    """Get a generative track from recommendations based on favorite artists"""
+    if not saved_artists:
+        logger.error("No saved artists to use for generative discovery")
+        return None
+
+    saved_artist_ids = [artist["id"] for artist in saved_artists]
+    saved_artist_ids_set = set(saved_artist_ids)
+
+    # Pick a random favorite artist
+    seed_artist = random.choice(saved_artists)
+    logger.debug(f"Using {seed_artist['name']} as seed for generative discovery")
+
+    try:
+        recommendations = sp.recommendations(seed_artists=[seed_artist["id"]], limit=20)
+    except Exception as e:
+        logger.error(f"Error getting recommendations: {e}")
+        return None
+
+    if not recommendations or not recommendations.get("tracks"):
+        logger.warning("No recommendations returned")
+        return None
+
+    # Filter out tracks from already saved artists
+    new_artist_tracks = [
+        track
+        for track in recommendations["tracks"]
+        if track["artists"][0]["id"] not in saved_artist_ids_set
+    ]
+
+    if not new_artist_tracks:
+        logger.debug("All recommended tracks are from saved artists")
+        return None
+
+    # Stochastically select a track (weighted by randomness)
+    selected_track = random.choice(new_artist_tracks)
+    artist = selected_track["artists"][0]
+    artist_name = artist["name"]
+    artist_id = artist["id"]
+
+    # Check if track is already saved
+    track_key = (
+        selected_track["name"].lower().strip(),
+        artist_name.lower().strip(),
+    )
+    if track_key in saved_tracks_set:
+        logger.debug(
+            f"Selected track {selected_track['name']} by {artist_name} is already saved"
+        )
+        # Try to get another track from the same artist
+        return pick_random_track_from_artist(artist_id)
+
+    # Get a random track from this artist's discography
+    track = pick_random_track_from_artist(artist_id)
+
+    if track:
+        logger.debug(f"Generative discovery found new artist: {artist_name}")
+        track["discovery_reason"] = (
+            f"Generated from recommendations seed: {seed_artist['name']}"
+        )
+
+    return track
+
+
+# %%
+# LOAD CONFIGURATION FROM config.yaml
+max_tracks = config["max_tracks"]
+max_runtime = config["max_runtime"]
+max_artist = config["max_artist"]
+failed_runtime_attempts = config["failed_runtime_attempts"]
+generative_percentage_mean = config["generative_percentage_mean"]
+generative_percentage_std = config["generative_percentage_std"]
 
 max_runtime_ms = max_runtime * 60 * 1000
 total_runtime = 0
@@ -202,8 +276,19 @@ attempts = 0
 max_attempts = 200  # Prevent infinite loops
 ended_early_reason = ""
 
+generative_count = max(
+    1,
+    int(
+        random.gauss(generative_percentage_mean, generative_percentage_std)
+        * max_tracks
+        / 100
+    ),
+)
+generative_count = min(generative_count, max_tracks)
+generative_tracks_added = 0
+
 logger.info(
-    f"Creating weekly mix with max {max_tracks} tracks, {max_runtime} minutes runtime, max {max_artist} tracks per artist"
+    f"Creating weekly mix with max {max_tracks} tracks, {max_runtime} minutes runtime, max {max_artist} tracks per artist, {generative_count} generative tracks from new artists"
 )
 
 while (
@@ -212,6 +297,41 @@ while (
     and attempts < max_attempts
 ):
     attempts += 1
+
+    use_generative = generative_tracks_added < generative_count and random.random() < (
+        generative_count / max_tracks
+    )
+
+    if use_generative:
+        generative_track = get_generative_track(
+            sp, saved_artists, saved_tracks_set, logger
+        )
+
+        if generative_track:
+            artist_name = generative_track["artists"][0]["name"]
+            track_id = generative_track["id"]
+            track_ms = generative_track["duration_ms"]
+            track_name = generative_track["name"]
+
+            if total_runtime + track_ms > max_runtime_ms:
+                runtime_limit_hits += 1
+                logger.debug(
+                    f"Generative track {track_name} by {artist_name} would make playlist too long"
+                )
+                if runtime_limit_hits >= failed_runtime_attempts:
+                    ended_early_reason = "Ended early because too many tracks hit runtime limit, likely near max time."
+                    logger.info(ended_early_reason)
+                    break
+                continue
+
+            logger.info(
+                f"✓ [GENERATIVE] {track_name} by {artist_name} made it to the playlist! ({generative_track.get('discovery_reason', 'Unknown')})"
+            )
+            new_playlist_ids.append(track_id)
+            total_runtime += track_ms
+            artist_counts[artist_name] += 1
+            generative_tracks_added += 1
+        continue
 
     # Pick a random artist
     artist = pick_random_artist(saved_artists)
@@ -263,6 +383,7 @@ logger.info(f"\nPlaylist created with {len(new_playlist_ids)} tracks")
 logger.info(f"Total runtime: {total_runtime / 1000 / 60:.1f} minutes")
 logger.info(f"Attempts made: {attempts}")
 logger.info(f"Runtime limit hits: {runtime_limit_hits}")
+logger.info(f"Generative tracks added: {generative_tracks_added}/{generative_count}")
 if ended_early_reason:
     logger.info(ended_early_reason)
 

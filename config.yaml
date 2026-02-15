@@ -1,0 +1,6 @@
+max_tracks: 20
+max_runtime: 75
+max_artist: 2
+failed_runtime_attempts: 5
+generative_percentage_mean: 10
+generative_percentage_std: 5
