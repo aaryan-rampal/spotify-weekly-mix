@@ -20,7 +20,7 @@ CURRENT_DAY=$(date +%u)
 
 if [ -z "$WEEKLY_DAY" ] || [ "$CURRENT_DAY" -eq "$WEEKLY_DAY" ]; then
     echo "Running weekly mix..."
-    python make-weekly-mix-saved-artists.py
+    python src/make_weekly_mix.py
     WEEKLY_EXIT_CODE=$?
     if [ $WEEKLY_EXIT_CODE -eq 0 ]; then
         echo "✓ Weekly mix completed successfully"
@@ -33,7 +33,7 @@ fi
 echo ""
 
 echo "Running 1-month and 3 month rolling window..."
-python make-rolling.py
+python src/make_rolling.py
 ROLLING_EXIT_CODE=$?
 if [ $ROLLING_EXIT_CODE -eq 0 ]; then
     echo "✓ 1-month rolling completed successfully"

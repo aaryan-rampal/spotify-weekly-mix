@@ -91,7 +91,7 @@ while True:
 logger.info(f"Fetched {len(saved_tracks)} saved tracks")
 
 # Write to CSV
-csv_path = Path(__file__).parent / "saved_songs.csv"
+csv_path = Path(__file__).parent.parent / "data" / "saved_songs.csv"
 logger.info(f"Writing tracks to {csv_path}...")
 
 with open(csv_path, "w", newline="", encoding="utf-8") as csvfile:
