@@ -43,7 +43,7 @@ def find_artist_ids(track, return_artists=False):
 # %%
 logger.remove()
 logger.add(
-    "weekly_mix.log",
+    "logs/weekly-mix.log",
     format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
     level="DEBUG",
 )
@@ -101,10 +101,12 @@ while results:
         # Create a normalized key: lowercase track name + primary artist name
         track_key = (
             track["name"].lower().strip(),
-            track["artists"][0]["name"].lower().strip() if track["artists"] else ""
+            track["artists"][0]["name"].lower().strip() if track["artists"] else "",
         )
         saved_tracks_set.add(track_key)
-        logger.debug(f"Saved track: {track['name']} by {track['artists'][0]['name'] if track['artists'] else 'Unknown'}")
+        logger.debug(
+            f"Saved track: {track['name']} by {track['artists'][0]['name'] if track['artists'] else 'Unknown'}"
+        )
 
     if results["next"]:
         results = sp.next(results)
@@ -230,12 +232,16 @@ while (
     # Check if track (or a version of it) is already saved
     track_key = (track_name.lower().strip(), artist_name.lower().strip())
     if track_key in saved_tracks_set:
-        logger.debug(f"{track_name} by {artist_name} is already saved (or a version of it)")
+        logger.debug(
+            f"{track_name} by {artist_name} is already saved (or a version of it)"
+        )
         continue
 
     # Check artist count limit
     if artist_counts[artist_name] >= max_artist:
-        logger.debug(f"{track_name} by {artist_name} - too many tracks by this artist already")
+        logger.debug(
+            f"{track_name} by {artist_name} - too many tracks by this artist already"
+        )
         continue
 
     # Check if adding this track would exceed runtime
@@ -243,9 +249,7 @@ while (
         runtime_limit_hits += 1
         logger.debug(f"{track_name} by {artist_name} would make playlist too long")
         if runtime_limit_hits >= failed_runtime_attempts:
-            ended_early_reason = (
-                "Ended early because too many tracks hit runtime limit, likely near max time."
-            )
+            ended_early_reason = "Ended early because too many tracks hit runtime limit, likely near max time."
             logger.info(ended_early_reason)
             break
         continue

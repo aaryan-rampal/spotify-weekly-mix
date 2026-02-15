@@ -10,7 +10,7 @@ from enum import Enum
 # %%
 logger.remove()
 logger.add(
-    "1month_rolling.log",
+    "logs/rolling.log",
     format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
     level="DEBUG",
 )
