@@ -36,6 +36,7 @@ sp = spotipy.Spotify(
     )
 )
 
+
 # %%
 def pin_playlist(playlist_id, playlist_name):
     try:
@@ -44,9 +45,11 @@ def pin_playlist(playlist_id, playlist_name):
     except Exception as e:
         logger.error(f"Failed to pin playlist: {e}")
 
+
 class BatchAction(Enum):
     ADD = "add"
     REMOVE = "remove"
+
 
 def batch_operation(items, action, playlist_id, batch_size=100):
     if items:
@@ -57,14 +60,22 @@ def batch_operation(items, action, playlist_id, batch_size=100):
                 sp.playlist_add_items(playlist_id, batch)
             else:
                 sp.playlist_remove_all_occurrences_of_items(playlist_id, batch)
-            logger.info(f"{action.value.capitalize()}ed batch {i // batch_size + 1}: {len(batch)} tracks")
-        logger.info(f"{action.value.capitalize()}ed {len(items)} total tracks to playlist")
+            logger.info(
+                f"{action.value.capitalize()}ed batch {i // batch_size + 1}: {len(batch)} tracks"
+            )
+        logger.info(
+            f"{action.value.capitalize()}ed {len(items)} total tracks to playlist"
+        )
 
 
 def make_rolling_playlist(playlist_name, days=30, pin=False):
-    cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
+    cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+        days=days
+    )
 
-    logger.info(f"Fetching saved tracks added after {cutoff_date.strftime('%Y-%m-%d')}...")
+    logger.info(
+        f"Fetching saved tracks added after {cutoff_date.strftime('%Y-%m-%d')}..."
+    )
 
     # Fetch all saved tracks and filter by added_at date
     filtered_tracks = []
@@ -95,6 +106,8 @@ def make_rolling_playlist(playlist_name, days=30, pin=False):
         else:
             break
 
+    # Sort tracks by added_at date, most recent first
+    filtered_tracks.sort(key=lambda x: x["added_at"], reverse=True)
     logger.info(f"Found {len(filtered_tracks)} tracks in the last {days} days")
 
     # Find existing playlist or create new one
@@ -135,8 +148,18 @@ def make_rolling_playlist(playlist_name, days=30, pin=False):
         track_ids_to_add = list(last_n_days_ids - track_ids_set)
         track_ids_to_remove = list(track_ids_set - last_n_days_ids)
 
-        batch_operation(track_ids_to_add, action=BatchAction.ADD, playlist_id=playlist_id)
-        batch_operation(track_ids_to_remove, action=BatchAction.REMOVE, playlist_id=playlist_id)
+        batch_operation(
+            track_ids_to_add, action=BatchAction.ADD, playlist_id=playlist_id
+        )
+        batch_operation(
+            track_ids_to_remove, action=BatchAction.REMOVE, playlist_id=playlist_id
+        )
+
+        # Update playlist description with new timestamp
+        sp.playlist_change_details(
+            playlist_id,
+            description=f"Tracks liked in the last {days} days (last updated: {datetime.datetime.now().strftime('%Y-%m-%d')})",
+        )
     else:
         # Create new playlist
         playlist_id = sp.user_playlist_create(
@@ -147,13 +170,16 @@ def make_rolling_playlist(playlist_name, days=30, pin=False):
         )["id"]
 
         track_ids_to_add = [t["id"] for t in filtered_tracks]
-        batch_operation(track_ids_to_add, action=BatchAction.ADD, playlist_id=playlist_id)
+        batch_operation(
+            track_ids_to_add, action=BatchAction.ADD, playlist_id=playlist_id
+        )
 
     logger.info(f"{days} Days Rolling playlist updated successfully!")
     if pin:
         pin_playlist(playlist_id, playlist_name)
         logger.info(f"Playlist pinned successfully!")
     logger.info(f"Playlist URL: https://open.spotify.com/playlist/{playlist_id}")
+
 
 # %%
 make_rolling_playlist("last month", days=30, pin=True)
