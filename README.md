@@ -9,6 +9,12 @@ Generates multiple playlist types:
 - **Rolling Window Playlists**: 1-month and 3-month playlists from recently liked tracks
 - **Generative Discovery**: (In progress) AI-powered genre and artist recommendations based on listening patterns
 
+## About
+
+Can't even lie—this is mainly for me. I built this project to expand my musical taste after getting bored of listening to the same songs on repeat. I've been generating custom mixes since December 2023 and it's been transformative for discovering new artists I wouldn't have found otherwise.
+
+Would recommend if you're bored, in a rut. The main script to run is `make_weekly_mix.py`—the others (`make_rolling.py`, `populate_saved_songs.py`) are very specific to my workflow.
+
 ## Project Structure
 
 ```
