@@ -177,7 +177,7 @@ def make_rolling_playlist(playlist_name, days=30, pin=False):
     logger.info(f"{days} Days Rolling playlist updated successfully!")
     if pin:
         pin_playlist(playlist_id, playlist_name)
-        logger.info(f"Playlist pinned successfully!")
+        logger.info("Playlist pinned successfully!")
     logger.info(f"Playlist URL: https://open.spotify.com/playlist/{playlist_id}")
 
 

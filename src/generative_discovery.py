@@ -47,7 +47,7 @@ def fetch_recent_liked_tracks(sp, logger, months_window=3):
                         time.sleep(retry_delay)
                         retry_delay = min(retry_delay * 2, max_delay)
                     else:
-                        logger.error(f"Max retries exceeded for rate limit")
+                        logger.error("Max retries exceeded for rate limit")
                         raise
                 else:
                     logger.error(f"Error fetching tracks: {e}")
