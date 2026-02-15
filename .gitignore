@@ -1,5 +1,8 @@
 .DS_Store
 .cache
+.mypy_cache
+.ruff_cache
+.roo
 .env
 data/
 monthly-mixes/
