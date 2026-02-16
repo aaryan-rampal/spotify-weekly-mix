@@ -6,6 +6,7 @@ import os
 import datetime
 from loguru import logger
 from enum import Enum
+from saved_tracks_cache import get_tracks_in_date_range
 
 # %%
 logger.remove()
@@ -75,42 +76,16 @@ def batch_operation(items, action, playlist_id, batch_size=100, position=None):
 
 
 def make_rolling_playlist(playlist_name, days=30, pin=False):
-    cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-        days=days
-    )
+    logger.info(f"Fetching saved tracks for last {days} days...")
 
-    logger.info(
-        f"Fetching saved tracks added after {cutoff_date.strftime('%Y-%m-%d')}..."
-    )
+    # Fetch and filter tracks by date
+    filtered_tracks = get_tracks_in_date_range(sp, days)
 
-    # Fetch all saved tracks and filter by added_at date
-    filtered_tracks = []
-    results = sp.current_user_saved_tracks(limit=50)
-
-    while results:
-        for item in results["items"]:
-            track = item["track"]
-            added_at = datetime.datetime.fromisoformat(
-                item["added_at"].replace("Z", "+00:00")
-            )
-
-            if added_at >= cutoff_date:
-                filtered_tracks.append(
-                    {
-                        "id": track["id"],
-                        "name": track["name"],
-                        "artists": [a["name"] for a in track["artists"]],
-                        "added_at": added_at,
-                    }
-                )
-                logger.debug(
-                    f"Track within window: {track['name']} by {track['artists'][0]['name']} (added {added_at.strftime('%Y-%m-%d')})"
-                )
-
-        if results["next"]:
-            results = sp.next(results)
-        else:
-            break
+    # Convert added_at strings to datetime for sorting
+    for track in filtered_tracks:
+        track["added_at"] = datetime.datetime.fromisoformat(
+            track["added_at"].replace("Z", "+00:00")
+        )
 
     # Sort tracks by added_at date, most recent first
     filtered_tracks.sort(key=lambda x: x["added_at"], reverse=True)
