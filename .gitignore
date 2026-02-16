@@ -10,4 +10,5 @@ logs/
 
 # my mac automation file
 *.plist
-
+**.venv
+**__pycache__
