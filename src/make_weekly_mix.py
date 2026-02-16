@@ -10,6 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 import yaml
 from loguru import logger
+from saved_tracks_cache import get_saved_track_keys
 
 # %%
 
@@ -99,28 +100,7 @@ logger.info(f"Total saved artists found: {len(saved_artists)}")
 # %%
 # Get all saved tracks to check for duplicates by name+artist
 logger.info("Fetching saved tracks to avoid duplicates...")
-saved_tracks_set = set()
-results = sp.current_user_saved_tracks(limit=50)
-
-while results:
-    for item in results["items"]:
-        track = item["track"]
-        # Create a normalized key: lowercase track name + primary artist name
-        track_key = (
-            track["name"].lower().strip(),
-            track["artists"][0]["name"].lower().strip() if track["artists"] else "",
-        )
-        saved_tracks_set.add(track_key)
-        logger.debug(
-            f"Saved track: {track['name']} by {track['artists'][0]['name'] if track['artists'] else 'Unknown'}"
-        )
-
-    if results["next"]:
-        results = sp.next(results)
-    else:
-        break
-
-logger.info(f"Total saved tracks found: {len(saved_tracks_set)}")
+saved_tracks_set = get_saved_track_keys(sp)
 
 
 # %%
@@ -290,6 +270,9 @@ generative_tracks_added = 0
 logger.info(
     f"Creating weekly mix with max {max_tracks} tracks, {max_runtime} minutes runtime, max {max_artist} tracks per artist, {generative_count} generative tracks from new artists"
 )
+logger.warning(
+    "TODO: Generative discovery is disabled until a non-deprecated replacement is implemented."
+)
 
 while (
     total_runtime <= max_runtime_ms
@@ -298,40 +281,7 @@ while (
 ):
     attempts += 1
 
-    use_generative = generative_tracks_added < generative_count and random.random() < (
-        generative_count / max_tracks
-    )
-
-    if use_generative:
-        generative_track = get_generative_track(
-            sp, saved_artists, saved_tracks_set, logger
-        )
-
-        if generative_track:
-            artist_name = generative_track["artists"][0]["name"]
-            track_id = generative_track["id"]
-            track_ms = generative_track["duration_ms"]
-            track_name = generative_track["name"]
-
-            if total_runtime + track_ms > max_runtime_ms:
-                runtime_limit_hits += 1
-                logger.debug(
-                    f"Generative track {track_name} by {artist_name} would make playlist too long"
-                )
-                if runtime_limit_hits >= failed_runtime_attempts:
-                    ended_early_reason = "Ended early because too many tracks hit runtime limit, likely near max time."
-                    logger.info(ended_early_reason)
-                    break
-                continue
-
-            logger.info(
-                f"✓ [GENERATIVE] {track_name} by {artist_name} made it to the playlist! ({generative_track.get('discovery_reason', 'Unknown')})"
-            )
-            new_playlist_ids.append(track_id)
-            total_runtime += track_ms
-            artist_counts[artist_name] += 1
-            generative_tracks_added += 1
-        continue
+    # TODO: Re-enable generative flow after implementing a replacement discovery source.
 
     # Pick a random artist
     artist = pick_random_artist(saved_artists)
