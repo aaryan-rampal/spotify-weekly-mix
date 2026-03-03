@@ -25,7 +25,7 @@ load_dotenv()
 client_id = os.getenv("SPOTIPY_CLIENT_ID")
 client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
 redirect_uri = os.getenv("SPOTIPY_REDIRECT_URI")
-scope = "playlist-modify-public,playlist-modify-private,playlist-read-private,user-library-read"
+scope = "playlist-modify-public,playlist-modify-private,playlist-read-private,user-library-read,user-follow-read"
 
 # %%
 sp = spotipy.Spotify(
