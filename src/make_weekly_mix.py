@@ -22,6 +22,7 @@ from weekly_mix_state import (
     load_weekly_mix_runs,
     record_weekly_mix_run,
 )
+from weekly_mix_selection import should_try_generative
 
 # %%
 
@@ -249,14 +250,14 @@ def get_generative_track(sp, saved_artists, saved_artist_names, lastfm_api_key, 
     return track
 
 
-def should_try_generative(generative_runtime_ms, generative_runtime_target_ms):
-    """Return whether the next attempt should use Last.fm discovery."""
-    return generative_runtime_ms < generative_runtime_target_ms
-
-
 def pick_candidate_track():
     """Pick either a Last.fm generative track or a normal saved-artist track."""
-    if should_try_generative(generative_runtime_ms, generative_runtime_target_ms):
+    if should_try_generative(
+        generative_runtime_ms,
+        generative_runtime_target_ms,
+        generative_failed_attempts,
+        failed_runtime_attempts,
+    ):
         track = get_generative_track(
             sp,
             saved_artists,
@@ -307,6 +308,7 @@ generative_runtime_cap_ms = int(
 )
 generative_runtime_ms = 0
 generative_tracks_added = 0
+generative_failed_attempts = 0
 
 logger.info(
     f"Creating weekly mix with max {max_tracks} tracks, "
@@ -365,9 +367,15 @@ while (
         continue
 
     if is_generative and generative_runtime_ms + rand_track_ms > generative_runtime_cap_ms:
+        generative_failed_attempts += 1
         logger.debug(
             f"{track_name} by {artist_name} would exceed generative runtime cap"
         )
+        if generative_failed_attempts >= failed_runtime_attempts:
+            logger.info(
+                "Generative discovery hit failed attempt limit; "
+                "using saved-artist tracks for the rest of this run"
+            )
         continue
 
     new_playlist_ids.append(rand_track_id)
