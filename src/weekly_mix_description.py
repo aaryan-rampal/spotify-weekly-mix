@@ -13,9 +13,9 @@ def format_generative_attribution(artist: dict[str, Any]) -> str:
     try:
         match_percent = round(float(match) * 100)
     except (TypeError, ValueError):
-        return f"{artist_name} recommended by {seed_artist}"
+        return f"{seed_artist} -> {artist_name}"
 
-    return f"{artist_name} recommended by {seed_artist} ({match_percent}% match)"
+    return f"{seed_artist} -> {artist_name} ({match_percent}% match)"
 
 
 def build_playlist_description(generative_artists: list[dict[str, Any]]) -> str:
