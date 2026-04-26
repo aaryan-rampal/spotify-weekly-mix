@@ -4,13 +4,19 @@ from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
 import os
 import random
-import datetime
 from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
 import yaml
 from loguru import logger
 from saved_tracks_cache import get_saved_track_keys
+from weekly_mix_state import (
+    STATE_PATH,
+    build_weekly_mix_identity,
+    find_current_week_playlist,
+    load_weekly_mix_runs,
+    record_weekly_mix_run,
+)
 
 # %%
 
@@ -76,6 +82,31 @@ sp = spotipy.Spotify(
         scope=scope,
     )
 )
+
+# %%
+user_id = sp.current_user()["id"]
+weekly_mix_identity = build_weekly_mix_identity()
+weekly_mix_state = load_weekly_mix_runs()
+existing_weekly_mix = find_current_week_playlist(
+    sp=sp,
+    user_id=user_id,
+    identity=weekly_mix_identity,
+    state=weekly_mix_state,
+)
+
+if existing_weekly_mix:
+    playlist_id = existing_weekly_mix.get("playlist_id") or existing_weekly_mix["id"]
+    logger.info(
+        f"Weekly mix already exists for {weekly_mix_identity.key}: {playlist_id}"
+    )
+    if "playlist_id" not in existing_weekly_mix:
+        record_weekly_mix_run(
+            state_path=STATE_PATH,
+            identity=weekly_mix_identity,
+            playlist_id=playlist_id,
+            playlist_url=existing_weekly_mix.get("external_urls", {}).get("spotify"),
+        )
+    raise SystemExit(0)
 
 # %%
 # Get all saved/followed artists
@@ -337,18 +368,25 @@ if ended_early_reason:
 
 # %%
 if new_playlist_ids:
-    user_id = sp.current_user()["id"]
-    current_week = datetime.datetime.now().isocalendar()[1]
-    playlist_name = f"Weekly Mix {current_week}"
+    playlist_name = weekly_mix_identity.playlist_name
 
     logger.info(f"Creating playlist: {playlist_name}")
     new_playlist = sp.user_playlist_create(
         user_id,
         playlist_name,
         public=False,
-        description="Your Weekly Mix from Saved Artists!",
+        description=(
+            "Your Weekly Mix from Saved Artists! "
+            f"{weekly_mix_identity.description_marker}"
+        ),
     )
     sp.playlist_add_items(new_playlist["id"], new_playlist_ids)
+    record_weekly_mix_run(
+        state_path=STATE_PATH,
+        identity=weekly_mix_identity,
+        playlist_id=new_playlist["id"],
+        playlist_url=new_playlist["external_urls"]["spotify"],
+    )
 
     logger.info(f"Playlist '{playlist_name}' created successfully!")
     logger.info(f"Playlist URL: {new_playlist['external_urls']['spotify']}")

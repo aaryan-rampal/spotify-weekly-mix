@@ -13,22 +13,13 @@ echo "=== Starting playlist generation ==="
 date
 echo ""
 
-# Weekly mix runs only on specific days (default: Monday (1))
-# Change WEEKLY_DAY to 0-6 where 0=Sunday, 1=Monday, etc., or set to empty to run daily
-WEEKLY_DAY=1
-CURRENT_DAY=$(date +%u)
-
-if [ -z "$WEEKLY_DAY" ] || [ "$CURRENT_DAY" -eq "$WEEKLY_DAY" ]; then
-    echo "Running weekly mix..."
-    python src/make_weekly_mix.py
-    WEEKLY_EXIT_CODE=$?
-    if [ $WEEKLY_EXIT_CODE -eq 0 ]; then
-        echo "✓ Weekly mix completed successfully"
-    else
-        echo "✗ Weekly mix failed with exit code $WEEKLY_EXIT_CODE"
-    fi
+echo "Running weekly mix..."
+python src/make_weekly_mix.py
+WEEKLY_EXIT_CODE=$?
+if [ $WEEKLY_EXIT_CODE -eq 0 ]; then
+    echo "✓ Weekly mix completed successfully"
 else
-    echo "Skipping weekly mix (scheduled for day $WEEKLY_DAY, today is day $CURRENT_DAY)"
+    echo "✗ Weekly mix failed with exit code $WEEKLY_EXIT_CODE"
 fi
 echo ""
 
