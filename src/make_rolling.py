@@ -225,7 +225,7 @@ def make_rolling_playlist(playlist_name, days=30, pin=False):
         logger.debug(f"Track IDs to remove: {track_ids_to_remove}")
 
         batch_operation(
-            list(reversed(track_ids_to_add)),
+            list(track_ids_to_add),
             action=BatchAction.ADD,
             playlist_id=playlist_id,
             position=0,
