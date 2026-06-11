@@ -12,3 +12,4 @@ logs/
 *.plist
 **.venv
 **__pycache__
+/docs/plans

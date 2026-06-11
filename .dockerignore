@@ -1,0 +1,15 @@
+.git
+.env
+.cache
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.roo
+.beads
+data/
+logs/
+docs/
+tests/
+*.plist
+**__pycache__

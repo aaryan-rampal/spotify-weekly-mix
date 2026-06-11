@@ -1,0 +1,24 @@
+[project]
+name = "spotify-weekly-mix"
+version = "0.1.0"
+description = "Automated Spotify playlist generation from saved artists and tracks"
+requires-python = ">=3.13"
+dependencies = [
+    "spotipy==2.25.2",
+    "python-dotenv==1.2.2",
+    "loguru==0.7.3",
+    "pyyaml==6.0.3",
+    "requests==2.33.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ty.rules]
