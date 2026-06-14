@@ -14,3 +14,6 @@ logs/
 **.venv
 **__pycache__
 /docs/plans
+
+# uv lockfile (not tracked in this repo)
+uv.lock
