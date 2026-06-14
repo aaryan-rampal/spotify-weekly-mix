@@ -5,6 +5,7 @@
 .roo
 .env
 data/
+state/
 monthly-mixes/
 logs/
 

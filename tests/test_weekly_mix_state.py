@@ -6,6 +6,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from weekly_mix_state import (
     CURRENT_MARKER_PREFIX,
+    STATE_PATH_ENV_VAR,
+    _default_state_path,
     build_weekly_mix_identity,
     find_current_week_playlist,
     has_current_week_mix,
@@ -26,6 +28,22 @@ class FakeSpotify:
         self.next_calls += 1
         next_index = page["next"]
         return self.pages[next_index]
+
+
+def test_default_state_path_uses_state_dir(monkeypatch):
+    monkeypatch.delenv(STATE_PATH_ENV_VAR, raising=False)
+
+    path = _default_state_path()
+
+    assert path.parent.name == "state"
+    assert path.name == "weekly_mix_runs.json"
+
+
+def test_default_state_path_honors_env_override(monkeypatch, tmp_path):
+    override = tmp_path / "custom" / "runs.json"
+    monkeypatch.setenv(STATE_PATH_ENV_VAR, str(override))
+
+    assert _default_state_path() == override
 
 
 def test_build_weekly_mix_identity_includes_iso_year():

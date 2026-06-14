@@ -70,6 +70,21 @@ python src/make_rolling.py
 python src/populate_saved_songs.py
 ```
 
+**Run via Docker:**
+```bash
+docker build -t spotify-weekly-mix .
+docker run --rm \
+  --env-file .env \
+  -v weekly-mix-state:/app/state \
+  -v "$(pwd)/.cache:/app/.cache" \
+  spotify-weekly-mix
+```
+The weekly mix dedup state is written to `WEEKLY_MIX_STATE_PATH`
+(default `/app/state/weekly_mix_runs.json`). Mounting a **named volume** at
+`/app/state` is required so the state survives `docker run --rm`; without it
+every run starts with empty state and recreates the week's playlist. Override
+`WEEKLY_MIX_STATE_PATH` to relocate the file.
+
 **Scheduler script details:**
 - Weekly mix runs weekly (configurable day)
 - Rolling playlists run daily
