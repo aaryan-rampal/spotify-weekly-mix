@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 from warnings import deprecated
 
+import app_time
+
 
 CURRENT_MARKER_PREFIX = "Generated for ISO week"
 
@@ -42,7 +44,7 @@ def build_weekly_mix_identity(
 ) -> WeeklyMixIdentity:
     """Build the stable identity for the current ISO week."""
     if now is None:
-        now = datetime.datetime.now()
+        now = app_time.now()
 
     iso_year, iso_week, _ = now.isocalendar()
     key = f"{iso_year}-W{iso_week:02d}"
@@ -78,7 +80,7 @@ def record_weekly_mix_run(
     state = load_weekly_mix_runs(state_path)
     state[identity.key] = {
         "playlist_id": playlist_id,
-        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "created_at": app_time.now().isoformat(),
         "name": identity.playlist_name,
     }
     if playlist_url:

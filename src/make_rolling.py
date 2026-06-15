@@ -8,6 +8,8 @@ from loguru import logger
 from enum import Enum
 from saved_tracks_cache import get_tracks_in_date_range
 
+import app_time
+
 # %%
 logger.remove()
 logger.add(
@@ -235,7 +237,7 @@ def make_rolling_playlist(playlist_name, days=30, pin=False):
         )
 
         # Update playlist description with new timestamp
-        new_description = f"Tracks liked in the last {days} days (last updated: {datetime.datetime.now().strftime('%Y-%m-%d')})"
+        new_description = f"Tracks liked in the last {days} days (last updated: {app_time.now().strftime('%Y-%m-%d')})"
         logger.debug(f"Updating playlist description to: {new_description}")
         sp.playlist_change_details(
             playlist_id,
@@ -249,7 +251,7 @@ def make_rolling_playlist(playlist_name, days=30, pin=False):
             user_id,
             playlist_name,
             public=False,
-            description=f"Tracks liked in the last {days} days (last updated: {datetime.datetime.now().strftime('%Y-%m-%d')})",
+            description=f"Tracks liked in the last {days} days (last updated: {app_time.now().strftime('%Y-%m-%d')})",
         )
         if not new_playlist:
             logger.error("Failed to create new playlist")
