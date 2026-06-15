@@ -8,6 +8,8 @@ from spotipy.oauth2 import SpotifyOAuth
 from loguru import logger
 from saved_tracks_cache import get_saved_tracks
 
+import app_time
+
 logger.remove()
 logger.add(
     "logs/analyze-unfollowed-artists.log",
@@ -50,9 +52,7 @@ logger.info("Fetching saved tracks...")
 tracks = get_saved_tracks(sp)
 
 if args.days is not None:
-    cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-        days=args.days
-    )
+    cutoff_date = app_time.now() - datetime.timedelta(days=args.days)
     tracks = [
         t
         for t in tracks

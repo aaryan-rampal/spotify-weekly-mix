@@ -4,6 +4,8 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from loguru import logger
 
+import app_time
+
 # %%
 logger.remove()
 logger.add(
@@ -43,9 +45,7 @@ def get_saved_tracks(sp, force_refresh: bool = False) -> List[Dict]:
 def get_tracks_in_date_range(sp, days: int, force_refresh: bool = False) -> List[Dict]:
     all_tracks = get_saved_tracks(sp, force_refresh)
 
-    cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-        days=days
-    )
+    cutoff_date = app_time.now() - datetime.timedelta(days=days)
 
     filtered = [
         t
@@ -89,7 +89,7 @@ def _load_from_cache() -> Optional[List[Dict]]:
         cached_at = datetime.datetime.fromisoformat(
             cache_data["cached_at"].replace("Z", "+00:00")
         )
-        age = datetime.datetime.now(datetime.timezone.utc) - cached_at
+        age = app_time.now() - cached_at
 
         logger.debug(
             f"Cache loaded: {cache_data['track_count']} tracks, {age.seconds // 3600}h old"
@@ -107,7 +107,7 @@ def _save_to_cache(tracks: List[Dict]) -> None:
         CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
         cache_data = {
-            "cached_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "cached_at": app_time.now().isoformat(),
             "track_count": len(tracks),
             "tracks": tracks,
         }
@@ -159,7 +159,7 @@ def _is_cache_valid(cache_data: Dict) -> bool:
     cached_at = datetime.datetime.fromisoformat(
         cache_data["cached_at"].replace("Z", "+00:00")
     )
-    age = datetime.datetime.now(datetime.timezone.utc) - cached_at
+    age = app_time.now() - cached_at
 
     is_valid = age.total_seconds() < CACHE_EXPIRY_HOURS * 60 * 60
 
