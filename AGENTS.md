@@ -185,7 +185,6 @@ def fetch_with_retry(sp, api_call, max_retries=5, initial_delay=1, max_delay=30)
 
 ## Git Workflow
 
-- Use Beads issue tracker for task tracking (`bd` commands)
 - Follow conventional commits: `feat:`, `fix:`, `refactor:`, etc.
-- Reference Beads issue IDs in commit messages (e.g., `feat: add feature (spotify-abc)`)
-- Commit related changes together (scripts + documentation + issues)
+- Commit related changes together (scripts + documentation)
+- **Beads is deprecated (2026-10-24).** Do not create, update or reference Beads issues (`bd` commands), and do not put Beads issue IDs in commit messages. `.beads/` is kept only as history; ignore any older instruction to use it.
