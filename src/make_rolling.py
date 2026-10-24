@@ -9,6 +9,7 @@ from enum import Enum
 from saved_tracks_cache import get_tracks_in_date_range
 
 import app_time
+from playlist_lookup import find_owned_playlist
 
 # %%
 logger.remove()
@@ -101,95 +102,12 @@ def make_rolling_playlist(playlist_name, days=30, pin=False):
         return
     user_id = user_info["id"]
     logger.debug(f"User ID: {user_id}")
-    logger.debug(f"Searching for existing playlist named '{playlist_name}'")
 
-    existing_playlist = None
-
-    logger.debug("Trying search API to find playlist...")
-    search_results = sp.search(q=f"playlist:{playlist_name}", type="playlist", limit=10)
-
-    if search_results and "playlists" in search_results:
-        logger.debug(
-            f"Search results: {search_results['playlists'].get('total', 0)} playlists found"
-        )
-        for playlist in search_results["playlists"]["items"]:
-            if playlist["name"] == playlist_name and playlist["owner"]["id"] == user_id:
-                existing_playlist = playlist
-                logger.info(
-                    f"Found existing playlist via search: {playlist_name} (ID: {playlist['id']})"
-                )
-                break
-
-    if not existing_playlist:
-        logger.debug(
-            "Playlist not found via search, trying user playlist enumeration..."
-        )
-        user_playlists = sp.current_user_playlists(limit=50)
-        playlist_count = 0
-
-        while user_playlists:
-            logger.debug(
-                f"Fetched page with {len(user_playlists.get('items', []))} playlists"
-            )
-            for playlist in user_playlists["items"]:
-                playlist_count += 1
-                logger.debug(
-                    f"Checking playlist {playlist_count}: {playlist['name']} (ID: {playlist['id']})"
-                )
-                if playlist["name"] == playlist_name:
-                    existing_playlist = playlist
-                    logger.info(
-                        f"Found existing playlist: {playlist_name} (ID: {playlist['id']})"
-                    )
-                    break
-            if existing_playlist:
-                break
-            if user_playlists["next"]:
-                logger.debug(f"Fetching next page of playlists...")
-                user_playlists = sp.next(user_playlists)
-            else:
-                break
-
-        logger.info(
-            f"Searched through {playlist_count} playlists, total available: {user_playlists.get('total', 'unknown') if user_playlists else 'unknown'}"
-        )
-
-    if not existing_playlist:
-        logger.debug(f"Did not find playlist named '{playlist_name}'")
-
-    existing_playlist = None
-    playlist_count = 0
-
-    user_playlists = sp.current_user_playlists(limit=50)
-
-    while user_playlists:
-        logger.debug(
-            f"Fetched page with {len(user_playlists.get('items', []))} playlists"
-        )
-        for playlist in user_playlists["items"]:
-            playlist_count += 1
-            logger.debug(
-                f"Checking playlist {playlist_count}: {playlist['name']} (ID: {playlist['id']})"
-            )
-            if playlist["name"] == playlist_name:
-                existing_playlist = playlist
-                logger.info(
-                    f"Found existing playlist: {playlist_name} (ID: {playlist['id']})"
-                )
-                break
-        if existing_playlist:
-            break
-        if user_playlists["next"]:
-            logger.debug(f"Fetching next page of playlists...")
-            user_playlists = sp.next(user_playlists)
-        else:
-            break
-
-    logger.info(
-        f"Searched through {playlist_count} playlists, total available: {user_playlists.get('total', 'unknown') if user_playlists else 'unknown'}"
-    )
-    if not existing_playlist:
-        logger.debug(f"Did not find playlist named '{playlist_name}'")
+    existing_playlist = find_owned_playlist(sp, playlist_name, user_id)
+    if existing_playlist:
+        logger.info(f"Found existing playlist: {playlist_name} (ID: {existing_playlist['id']})")
+    else:
+        logger.info(f"No playlist named '{playlist_name}' yet; creating it")
 
     if existing_playlist:
         # Clear existing playlist
