@@ -23,5 +23,13 @@ else
 fi
 echo ""
 
+echo "Running Weekly Mix Leftovers..."
+if uv run python src/make_weekly_mix_leftovers.py; then
+    echo "✓ Weekly Mix Leftovers completed successfully"
+else
+    echo "✗ Weekly Mix Leftovers failed with exit code $?"
+fi
+echo ""
+
 echo "=== Playlist generation complete ==="
 date
