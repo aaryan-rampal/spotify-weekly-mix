@@ -1,9 +1,10 @@
 """Plan and sync the "Weekly Mix Leftovers" playlist.
 
-The playlist holds every track from the user's own "Weekly Mix N" playlists that is not in Liked
-Songs (exact track ID), newest mix first. Each run diffs the playlist against that target rather
-than rebuilding it, so a run with nothing new changes nothing, a track liked since the last run
-drops off, and a new mix's leftovers land at the top without moving the rest.
+The playlist holds every track from the user's own past "Weekly Mix N" playlists that is not in
+Liked Songs (exact track ID), newest mix first. The current week's mix is left out entirely while
+it is still being listened to. Each run diffs the playlist against that target rather than
+rebuilding it, so a run with nothing new changes nothing, a track liked since the last run drops
+off, and last week's leftovers land at the top without moving the rest when a new mix arrives.
 
 A weekly mix never changes after the job builds it, so each mix's track list is cached against its
 `snapshot_id` in the state volume. Only new or edited mixes cost a Spotify read; after the first
@@ -79,21 +80,28 @@ def newest_first(mixes: list[MixTracks]) -> list[MixTracks]:
 
 
 def leftover_track_ids(mixes: list[MixTracks], liked_ids: set[str]) -> list[str]:
-    """Track IDs from the mixes that are not liked, in mix order, each kept once.
+    """Track IDs from past mixes that are not liked, in mix order, each kept once.
+
+    The newest mix is the current week's, which the user is still listening to, so all of its
+    tracks are left out, including where an older mix repeats one. When the next mix arrives,
+    this one's unliked tracks move into the playlist at the top.
 
     Args:
-        mixes: Mixes in the order their tracks should appear (newest first).
+        mixes: Mixes newest first; the first is the current mix.
         liked_ids: Track IDs in Liked Songs.
 
     Returns:
-        The target contents of the leftovers playlist. A track in several mixes keeps the
-        position of its newest mix.
+        The target contents of the leftovers playlist. A track in several past mixes keeps the
+        position of its newest one.
     """
-    seen: set[str] = set()
+    if not mixes:
+        return []
+    current, past = mixes[0], mixes[1:]
+    seen = liked_ids | set(current.track_ids)
     result: list[str] = []
-    for mix in mixes:
+    for mix in past:
         for track_id in mix.track_ids:
-            if track_id in liked_ids or track_id in seen:
+            if track_id in seen:
                 continue
             seen.add(track_id)
             result.append(track_id)
@@ -242,7 +250,7 @@ def find_or_create_leftovers(
         user_id,
         LEFTOVERS_PLAYLIST_NAME,
         public=False,
-        description="Songs from your Weekly Mixes that aren't in Liked Songs.",
+        description="Songs from your past Weekly Mixes that aren't in Liked Songs.",
     )
     return created["id"], True
 

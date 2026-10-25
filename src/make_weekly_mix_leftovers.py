@@ -87,7 +87,8 @@ def sync_leftovers() -> str:
     sp.playlist_change_details(
         playlist_id,
         description=(
-            "Songs from your Weekly Mixes that aren't in Liked Songs, newest mix first. "
+            "Songs from your past Weekly Mixes that aren't in Liked Songs, newest first; "
+            "this week's mix is left out. "
             f"{len(desired)} songs, updated {app_time.now():%Y-%m-%d}."
         ),
     )

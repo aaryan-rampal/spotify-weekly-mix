@@ -7,7 +7,7 @@ Python toolset for automated Spotify playlist generation from saved artists, tra
 Generates multiple playlist types:
 - **Weekly Mix**: Randomized playlist from saved artists with configurable constraints (track count, runtime, tracks per artist)
 - **Rolling Window Playlists**: 1-month and 3-month playlists from recently liked tracks
-- **Weekly Mix Leftovers**: every track from your own `Weekly Mix N` playlists that isn't in Liked Songs (exact track match), newest mix first. Synced nightly by diffing, so liking a track drops it the next night and a new mix's leftovers land at the top. Mix track lists are cached by `snapshot_id` in `weekly_mix_leftovers.json` next to the weekly-mix state, so only new mixes cost a Spotify read.
+- **Weekly Mix Leftovers**: every track from your own past `Weekly Mix N` playlists that isn't in Liked Songs (exact track match), newest mix first. The current week's mix is left out entirely, including songs an older mix repeats, while you're still listening to it. Synced nightly by diffing, so liking a track drops it the next night, and when a new mix arrives last week's leftovers land at the top. Mix track lists are cached by `snapshot_id` in `weekly_mix_leftovers.json` next to the weekly-mix state, so only new mixes cost a Spotify read.
 - **Generative Discovery**: (In progress) AI-powered genre and artist recommendations based on listening patterns
 
 ## About

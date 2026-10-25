@@ -99,12 +99,33 @@ def test_newest_first_orders_by_first_added_and_puts_undated_last():
 
 
 def test_leftovers_keep_mix_order_drop_liked_and_dedupe():
-    mixes = [mix("new", "2026-10-19", ["t1", "t2", "t3"]), mix("old", "2026-10-12", ["t3", "t4"])]
+    mixes = [
+        mix("current", "2026-10-19", ["c1"]),
+        mix("last", "2026-10-12", ["t1", "t2", "t3"]),
+        mix("older", "2026-10-05", ["t3", "t4"]),
+    ]
     assert leftover_track_ids(mixes, liked_ids={"t2"}) == ["t1", "t3", "t4"]
 
 
-def test_leftovers_empty_when_everything_is_liked():
-    assert leftover_track_ids([mix("m", "2026-10-19", ["t1"])], liked_ids={"t1"}) == []
+def test_leftovers_leave_out_the_current_mix_even_where_older_mixes_repeat_it():
+    mixes = [
+        mix("current", "2026-10-19", ["shared", "c1"]),
+        mix("last", "2026-10-12", ["t1", "shared"]),
+    ]
+    assert leftover_track_ids(mixes, liked_ids=set()) == ["t1"]
+
+
+def test_leftovers_empty_when_only_the_current_mix_exists():
+    assert leftover_track_ids([mix("current", "2026-10-19", ["c1"])], liked_ids=set()) == []
+
+
+def test_leftovers_empty_without_mixes():
+    assert leftover_track_ids([], liked_ids=set()) == []
+
+
+def test_leftovers_empty_when_everything_older_is_liked():
+    mixes = [mix("current", "2026-10-19", ["c1"]), mix("last", "2026-10-12", ["t1"])]
+    assert leftover_track_ids(mixes, liked_ids={"t1"}) == []
 
 
 # %% Planning the sync
